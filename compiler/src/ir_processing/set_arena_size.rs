@@ -20,6 +20,7 @@ pub fn visit_instruction(
         Call(b) => visit_call(b, function_to_arena_size),
         Compute(b) => visit_compute(b, function_to_arena_size),
         Load(b) => visit_load(b, function_to_arena_size),
+        LoadConstant(b) => visit_load_constant(b, function_to_arena_size),
         Loop(b) => visit_loop(b, function_to_arena_size),
         Return(b) => visit_return(b, function_to_arena_size),
         Store(b) => visit_store(b, function_to_arena_size),
@@ -58,6 +59,9 @@ pub fn visit_compute(bucket: &mut ComputeBucket, function_to_arena_size: &HashMa
 pub fn visit_load(bucket: &mut LoadBucket, function_to_arena_size: &HashMap<String, usize>) {
     visit_location(&mut bucket.src, function_to_arena_size);
     visit_address_type(&mut bucket.address_type, function_to_arena_size);
+}
+pub fn visit_load_constant(bucket: &mut LoadConstantBucket, function_to_arena_size: &HashMap<String, usize>) {
+    visit_instruction(&mut bucket.location, function_to_arena_size);
 }
 
 pub fn visit_create_cmp(

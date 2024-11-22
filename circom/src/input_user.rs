@@ -32,6 +32,7 @@ pub struct Input {
     pub inspect_constraints_flag: bool,
     pub no_rounds: usize,
     pub flag_verbose: bool,
+    pub flag_no_init: bool,
     pub prime: String,
     pub link_libraries : Vec<PathBuf>
 }
@@ -106,6 +107,7 @@ impl Input {
             inspect_constraints_flag: input_processing::get_inspect_constraints(&matches),
             flag_old_heuristics: input_processing::get_flag_old_heuristics(&matches),
             flag_verbose: input_processing::get_flag_verbose(&matches), 
+            flag_no_init: input_processing::get_flag_no_init(&matches), 
             prime: input_processing::get_prime(&matches)?,
             link_libraries
         })
@@ -204,6 +206,9 @@ impl Input {
     }
     pub fn flag_verbose(&self) -> bool {
         self.flag_verbose
+    }
+    pub fn flag_no_init(&self) -> bool {
+        self.flag_no_init
     }
     pub fn reduced_simplification_flag(&self) -> bool {
         self.reduced_simplification_flag
@@ -324,6 +329,10 @@ mod input_processing {
         matches.is_present("flag_verbose")
     }
 
+    pub fn get_flag_no_init(matches: &ArgMatches) -> bool {
+        matches.is_present("flag_no_init")
+    }
+
     pub fn get_flag_old_heuristics(matches: &ArgMatches) -> bool {
         matches.is_present("flag_old_heuristics")
     }
@@ -340,6 +349,7 @@ mod input_processing {
                       || prime_value == "pallas"
                       || prime_value == "vesta"
                       || prime_value == "secq256r1"
+                      || prime_value == "bls12-377"
                       {
                         Ok(String::from(matches.value_of("prime").unwrap()))
                     }
@@ -510,6 +520,13 @@ mod input_processing {
                     .help("Shows logs during compilation"),
             )
             .arg(
+                Arg::with_name("flag_no_init")
+                    .long("no_init")
+                    .takes_value(false)
+                    .display_order(999)
+                    .help("Removes initializations to 0 of variables"),
+            )
+            .arg(
                 Arg::with_name("flag_old_heuristics")
                     .long("use_old_simplification_heuristics")
                     .takes_value(false)
@@ -523,7 +540,7 @@ mod input_processing {
                     .takes_value(true)
                     .default_value("bn128")
                     .display_order(300)
-                    .help("To choose the prime number to use to generate the circuit. Receives the name of the curve (bn128, bls12381, goldilocks, grumpkin, pallas, vesta, secq256r1)"),
+                    .help("To choose the prime number to use to generate the circuit. Receives the name of the curve (bn128, bls12381, goldilocks, grumpkin, pallas, vesta, secq256r1, bls12-377)"),
             )
             .get_matches()
     }

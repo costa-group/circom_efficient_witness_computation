@@ -100,7 +100,8 @@ fn build_template_instances(
             template_database: &c_info.template_database,
             string_table : string_table,
             signals_to_tags: template.signals_to_tags,
-            constraint_assert_dissabled_flag
+            constraint_assert_dissabled_flag,
+            constant_variables: template.constant_variables
         };
         let mut template_info = TemplateCodeInfo {
             name,
@@ -123,6 +124,8 @@ fn build_template_instances(
         template_info.expression_stack_depth = out.expression_depth;
         template_info.var_stack_depth = out.stack_depth;
         template_info.signal_stack_depth = out.signal_depth;
+        template_info.constant_variables = out.constant_variables;
+
         string_table = out.string_table;
         cmp_id = out.next_cmp_id;
         circuit.add_template_code(template_info);
@@ -167,7 +170,8 @@ fn build_function_instances(
             string_table : string_table,
             signals_to_tags: HashMap::new(),
             buses: &c_info.buses,
-            constraint_assert_dissabled_flag
+            constraint_assert_dissabled_flag,
+            constant_variables: instance.constant_variables
         };
         let mut function_info = FunctionCodeInfo {
             name,
@@ -183,6 +187,8 @@ fn build_function_instances(
         function_info.body = out.code;
         function_info.max_number_of_ops_in_expression = out.expression_depth;
         function_info.max_number_of_vars = out.stack_depth;
+        function_info.constant_variables = out.constant_variables;
+
         function_to_arena_size.insert(header, function_info.max_number_of_vars);
         circuit.add_function_code(function_info);
     }
@@ -208,6 +214,7 @@ fn initialize_wasm_producer(vcp: &VCP, database: &TemplateDB, wat_flag:bool, ver
         "pallas" => 1948,
         "vesta" => 1948,
         "secq256r1" => 1948,
+        "bls12-377" => 1948,
         _ => unreachable!()
     };
     //producer.fr_memory_size = 412 if goldilocks and 1948 for bn128 and bls12381

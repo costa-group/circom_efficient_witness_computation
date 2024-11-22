@@ -945,6 +945,7 @@ pub fn generate_fr_hpp_file(c_folder: &PathBuf, prime: &String) -> std::io::Resu
         "pallas" => include_str!("pallas/fr.hpp"),
         "vesta" => include_str!("vesta/fr.hpp"),
         "secq256r1" => include_str!("secq256r1/fr.hpp"),
+        "bls12-377" => include_str!("bls12-377/fr.hpp"),
         _ => unreachable!(),
     };
     for line in file.lines() {
@@ -988,7 +989,8 @@ pub fn generate_fr_cpp_file(c_folder: &PathBuf, prime: &String) -> std::io::Resu
         "pallas" => include_str!("pallas/fr.cpp"),
         "vesta" => include_str!("vesta/fr.cpp"),
         "secq256r1" => include_str!("secq256r1/fr.cpp"),
-        
+        "bls12-377" => include_str!("bls12-377/fr.cpp"),
+
         _ => unreachable!(),
     };
     for line in file.lines() {
@@ -1032,6 +1034,8 @@ pub fn generate_fr_asm_file(c_folder: &PathBuf, prime: &String) -> std::io::Resu
         "pallas" => include_str!("pallas/fr.asm"),
         "vesta" => include_str!("vesta/fr.asm"),
         "secq256r1" => include_str!("secq256r1/fr.asm"),
+        "bls12-377" => include_str!("bls12-377/fr.asm"),
+
         _ => unreachable!(),
     };    
     for line in file.lines() {

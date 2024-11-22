@@ -16,6 +16,7 @@ pub fn build_instruction(instruction: &mut Instruction, fresh: usize) -> usize {
         Call(b) => build_call(b, fresh),
         Compute(b) => build_compute(b, fresh),
         Load(b) => build_load(b, fresh).0,
+        LoadConstant(b) => build_load_constant(b, fresh).0,
         Loop(b) => build_loop(b, fresh),
         Return(b) => build_return(b, fresh),
         Store(b) => build_store(b, fresh),
@@ -95,6 +96,10 @@ pub fn build_load(bucket: &mut LoadBucket, fresh: usize) -> (usize, usize) {
     let (_v0, f0) = build_address_type(&mut bucket.address_type, fresh);
     let (v1, f1) = build_location(&mut bucket.src, f0);
     (v1, f1)
+}
+
+pub fn build_load_constant(bucket: &mut LoadConstantBucket, fresh: usize) -> (usize, usize) {
+    build_instruction_address(&mut bucket.location, fresh)
 }
 
 pub fn build_create_cmp(bucket: &mut CreateCmpBucket, fresh: usize) -> usize {

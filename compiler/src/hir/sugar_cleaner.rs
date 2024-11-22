@@ -461,6 +461,7 @@ fn rmv_sugar(fresh_variable: &str, expr: Expression, buffer: &mut Vec<Statement>
         access: vec![],
         op: AssignOp::AssignVar,
         rhe: expr,
+        is_initialization: false
     };
     let new_arg =
         Variable { meta: variable_meta, name: fresh_variable.to_string(), access: vec![] };
@@ -569,6 +570,7 @@ fn split_return(stmt: Statement, id: usize) -> ReturnSplit {
             access: vec![],
             op: AssignOp::AssignVar,
             rhe: value,
+            is_initialization: false
         };
         let returned_variable =
             Variable { meta: variable_meta, name: id.to_string(), access: vec![] };
@@ -591,7 +593,7 @@ fn into_single_substitution(stmt: Statement, stmts: &mut Vec<Statement>) {
 fn rhe_switch_case(stmt: Statement, stmts: &mut Vec<Statement>) {
     use Expression::InlineSwitchOp;
     use Statement::{Block, IfThenElse, Substitution};
-    if let Substitution { var, access, op, rhe, meta } = stmt {
+    if let Substitution { var, access, op, rhe, meta , is_initialization} = stmt {
         if let InlineSwitchOp { cond, if_true, if_false, .. } = rhe {
             let mut if_assigns = vec![];
             let sub_if = Substitution {
@@ -600,10 +602,11 @@ fn rhe_switch_case(stmt: Statement, stmts: &mut Vec<Statement>) {
                 access: access.clone(),
                 op: op.clone(),
                 rhe: *if_true,
+                is_initialization
             };
             if_assigns.push(sub_if);
             let mut else_assigns = vec![];
-            let sub_else = Substitution { op, var, access, meta: meta.clone(), rhe: *if_false };
+            let sub_else = Substitution { op, var, access, meta: meta.clone(), rhe: *if_false, is_initialization };
             else_assigns.push(sub_else);
             let if_body = Block { stmts: if_assigns, meta: meta.clone() };
             let else_body = Block { stmts: else_assigns, meta: meta.clone() };
@@ -636,7 +639,7 @@ fn rhe_array_case(stmt: Statement, stmts: &mut Vec<Statement>) {
     use num_bigint_dig::BigInt;
     use Expression::{ArrayInLine, Number, UniformArray};
     use Statement::Substitution;
-    if let Substitution { var, access, op, rhe, meta } = stmt {
+    if let Substitution { var, access, op, rhe, meta , is_initialization} = stmt {
         if let ArrayInLine { values, .. } = rhe {
             let mut index = 0;
             for v in values {
@@ -652,6 +655,7 @@ fn rhe_array_case(stmt: Statement, stmts: &mut Vec<Statement>) {
                     access: accessed_with,
                     meta: meta.clone(),
                     rhe: v,
+                    is_initialization
                 };
                 stmts.push(sub);
                 index += 1;
@@ -676,6 +680,7 @@ fn rhe_array_case(stmt: Statement, stmts: &mut Vec<Statement>) {
                     access: accessed_with,
                     meta: meta.clone(),
                     rhe: *value.clone(),
+                    is_initialization
                 };
                 stmts.push(sub);
                 index += 1;

@@ -45,8 +45,9 @@ pub fn build_substitution(
     access: Vec<Access>,
     op: AssignOp,
     rhe: Expression,
+    is_initialization: bool
 ) -> Statement {
-    Substitution { meta, var, access, op, rhe }
+    Substitution { meta, var, access, op, rhe, is_initialization }
 }
 
 pub fn build_constraint_equality(meta: Meta, lhe: Expression, rhe: Expression) -> Statement {
