@@ -378,21 +378,21 @@ ParseDeclaration : Statement = {
 ParseSubstitution : Statement = {
     <s:@L> <variable: ParseExpression> <ops: ParseAssignOp> <rhe: ParseExpression> <e:@R>
     => {if let Expression::Variable {meta, name, access} = variable {
-        build_substitution(Meta::new(s,e),name,access,ops,rhe)
+        build_substitution(Meta::new(s,e),name,access,ops,rhe, false)
     } else{
         build_mult_substitution(Meta::new(s,e),variable,ops,rhe)
     }
      },
     <s:@L> <lhe: ParseExpression> "-->" <variable: ParseExpression> <e:@R>
      => {if let Expression::Variable {meta, name, access} = variable {
-            build_substitution(Meta::new(s,e),name,access,AssignOp::AssignSignal,lhe)
+            build_substitution(Meta::new(s,e),name,access,AssignOp::AssignSignal,lhe, false)
         } else {
             build_mult_substitution(Meta::new(s,e),variable,AssignOp::AssignSignal,lhe)
         }
      },
      <s:@L> <lhe: ParseExpression> "==>" <variable: ParseExpression>  <e:@R>
      => {if let Expression::Variable {meta, name, access} = variable {
-            build_substitution(Meta::new(s,e),name,access,AssignOp::AssignConstraintSignal,lhe)
+            build_substitution(Meta::new(s,e),name,access,AssignOp::AssignConstraintSignal,lhe, false)
         } else{
             build_mult_substitution(Meta::new(s,e),variable,AssignOp::AssignConstraintSignal,lhe)
         }

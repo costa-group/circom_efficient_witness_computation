@@ -13,6 +13,7 @@ pub fn reduce_instruction(instr: Instruction) -> Instruction {
     match instr {
         Value(b) => IntoInstruction::into_instruction(b),
         Load(b) => reduce_load(b),
+        LoadConstant(b) => reduce_load_constant(b),
         Store(b) => reduce_store(b),
         Call(b) => reduce_call(b),
         Branch(b) => reduce_branch(b),
@@ -120,6 +121,11 @@ pub fn reduce_branch(mut bucket: BranchBucket) -> Instruction {
 pub fn reduce_load(mut bucket: LoadBucket) -> Instruction {
     bucket.address_type = reduce_address_type(bucket.address_type);
     bucket.src = reduce_location_rule(bucket.src);
+    IntoInstruction::into_instruction(bucket)
+}
+
+pub fn reduce_load_constant(mut bucket: LoadConstantBucket) -> Instruction {
+    bucket.location = Allocate::allocate(reduce_instruction(*bucket.location));
     IntoInstruction::into_instruction(bucket)
 }
 

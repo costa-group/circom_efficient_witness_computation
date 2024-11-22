@@ -1,5 +1,5 @@
 use crate::intermediate_representation::ir_interface::*;
-use std::collections::{HashSet};
+use std::collections::HashSet;
 
 type ComponentsSet = HashSet<String>;
 
@@ -37,6 +37,7 @@ pub fn visit_instruction(
         Branch(b) => visit_branch(b, known_last_component, unknown_last_component, found_unknown_address, inside_loop),
         Call(b) => visit_call(b, known_last_component, unknown_last_component, found_unknown_address, inside_loop),
         Compute(b) => visit_compute(b, known_last_component, unknown_last_component, found_unknown_address, inside_loop),
+        LoadConstant(b) => visit_load_constant(b, known_last_component, unknown_last_component, found_unknown_address, inside_loop),
         Load(b) => visit_load(b, known_last_component, unknown_last_component, found_unknown_address, inside_loop),
         Loop(b) => visit_loop(b, known_last_component, unknown_last_component, found_unknown_address, inside_loop),
         Return(b) => visit_return(b, known_last_component, unknown_last_component, found_unknown_address, inside_loop),
@@ -131,6 +132,16 @@ pub fn visit_compute(
 }
 pub fn visit_load(
     _bucket: &mut LoadBucket, 
+    _known_last_component: &mut ComponentsSet, 
+    _unknown_last_component: &mut ComponentsSet,  
+    found_unknown_address: bool,
+    _inside_loop: bool
+) -> bool{
+    found_unknown_address
+}
+
+pub fn visit_load_constant(
+    _bucket: &mut LoadConstantBucket, 
     _known_last_component: &mut ComponentsSet, 
     _unknown_last_component: &mut ComponentsSet,  
     found_unknown_address: bool,

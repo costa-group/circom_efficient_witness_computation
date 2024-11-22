@@ -4,6 +4,8 @@ use crate::intermediate_representation::InstructionList;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::wasm_elements::*;
+use std::collections::BTreeMap;
+use num_bigint_dig::BigInt;
 //use std::io::Write;
 
 pub type FunctionCode = Box<FunctionCodeInfo>;
@@ -14,6 +16,7 @@ pub struct FunctionCodeInfo {
     pub params: Vec<Param>,
     pub returns: Vec<Dimension>,
     pub body: InstructionList,
+    pub constant_variables: Vec<(String, Vec<usize>)>,
     pub max_number_of_vars: usize,
     pub max_number_of_ops_in_expression: usize,
 }
@@ -91,6 +94,10 @@ impl WriteWasm for FunctionCodeInfo {
 impl WriteC for FunctionCodeInfo {
     fn produce_c(&self, producer: &CProducer, _parallel: Option<bool>) -> (Vec<String>, String) {
         use c_code_generator::*;
+        
+        let mut instructions = Vec::new();
+        
+        
         let header = format!("void {}", self.header);
         let params = vec![
             declare_circom_calc_wit(),
@@ -104,12 +111,32 @@ impl WriteC for FunctionCodeInfo {
         body.push(format!("{};", declare_expaux(self.max_number_of_ops_in_expression)));
         body.push(format!("{};", declare_my_template_name_function(&self.name)));
         body.push(format!("u64 {} = {};", my_id(), component_father()));
+        
+        // We declare here the constants, TODO: move outside function
+        for (var, values) in &self.constant_variables{
+            let name_constant = format!("{}_{}", self.header, var);
+            let mut pointers_to_values = Vec::new();
+            for v in values{
+                pointers_to_values.push(format!("&{}", circuit_constants(v.to_string())));
+            }
+            body.push(
+                format!("static FrElement* {}[{}] = {{ {} }};",
+                    name_constant,
+                    values.len(),
+                    argument_list(pointers_to_values)
+                )
+            );
+        }
+    
+
         for t in &self.body {
             let (mut instructions_body, _) = t.produce_c(producer, Some(false));
             body.append(&mut instructions_body);
         }
         let callable = build_callable(header, params, body);
-        (vec![callable], "".to_string())
+        instructions.push(callable);
+  
+        (instructions, "".to_string())
     }
 }
 

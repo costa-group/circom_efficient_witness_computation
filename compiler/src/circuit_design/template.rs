@@ -23,6 +23,7 @@ pub struct TemplateCodeInfo {
     pub expression_stack_depth: usize,
     pub signal_stack_depth: usize, // Not used now
     pub number_of_components: usize,
+    pub constant_variables: Vec<(String, Vec<usize>)>
 }
 impl ToString for TemplateCodeInfo {
     fn to_string(&self) -> String {
@@ -166,6 +167,8 @@ impl TemplateCodeInfo {
     fn produce_c_parallel_case(&self, producer: &CProducer, parallel: bool) -> Vec<String> {
         use c_code_generator::*;
 
+        let mut instructions = Vec::new();
+
         let create_header = if parallel {format!("void {}_create_parallel", self.header)}
             else{format!("void {}_create", self.header)} ;
         let mut create_params = vec![];
@@ -293,6 +296,21 @@ impl TemplateCodeInfo {
         run_body.push(format!("int cmp_index_ref_load = -1;"));
 
 
+        // We declare here the constants, TODO: move outside function
+        for (var, values) in &self.constant_variables{
+            let name_constant = format!("{}_{}", self.header, var);
+            let mut pointers_to_values = Vec::new();
+            for v in values{
+                pointers_to_values.push(format!("&{}", circuit_constants(v.to_string())));
+            }
+            run_body.push(
+                format!("static FrElement* {}[{}] = {{ {} }};",
+                    name_constant,
+                    values.len(),
+                    argument_list(pointers_to_values)
+                )
+            );
+        }
         
         for t in &self.body {
             let (mut instructions_body, _) = t.produce_c(producer, Some(parallel));
@@ -340,7 +358,10 @@ impl TemplateCodeInfo {
         
         run_body.push(format!("}}"));
         let run_fun = build_callable(run_header, run_params, run_body);
-        vec![create_fun, run_fun]
+        
+        instructions.push(create_fun);
+        instructions.push(run_fun);
+        instructions
     }
 
     pub fn wrap(self) -> TemplateCode {
