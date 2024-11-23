@@ -64,6 +64,8 @@ pub fn build_instruction_compute(instruction: &mut Instruction, fresh: usize) ->
              (build_compute(b, fresh), fresh + 1), // needs 1 expaux to store the result
         Load(b) => 
             build_load(b, fresh), // returns the number of expaux needed
+        LoadConstant(b) => 
+            build_load_constant(b, fresh), // returns the number of expaux needed
         Value(b) => 
             (build_value(b, fresh), fresh + 1), // needs 1 expaux to store the result
         _ => unreachable!(), // only possible instructions inside a compute
