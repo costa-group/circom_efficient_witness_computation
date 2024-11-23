@@ -304,16 +304,29 @@ impl TemplateCodeInfo {
         for (var, values) in &self.constant_variables{
             let name_constant = format!("{}_{}", self.header, var);
             let mut pointers_to_values = Vec::new();
-            for v in values{
-                pointers_to_values.push(format!("&{}", circuit_constants(v.to_string())));
+            if producer.get_size_32_bit() > 2 {
+                for v in values{
+                    pointers_to_values.push(format!("&{}", circuit_constants(v.to_string())));
+                }
+                run_body.push(
+                    format!("static FrElement* {}[{}] = {{ {} }};",
+                            name_constant,
+                            values.len(),
+                            argument_list(pointers_to_values)
+                    )
+                );
+            } else {
+                for v in values{
+                    pointers_to_values.push(format!("{}ull", producer.get_field_constant_list()[*v]));
+                }
+                run_body.push(
+                    format!("static u64 {}[{}] = {{ {} }};",
+                            name_constant,
+                            values.len(),
+                            argument_list(pointers_to_values)
+                    )
+                );                
             }
-            run_body.push(
-                format!("static FrElement* {}[{}] = {{ {} }};",
-                    name_constant,
-                    values.len(),
-                    argument_list(pointers_to_values)
-                )
-            );
         }
 
         
