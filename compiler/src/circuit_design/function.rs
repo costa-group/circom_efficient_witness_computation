@@ -4,8 +4,6 @@ use crate::intermediate_representation::InstructionList;
 use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::wasm_elements::*;
-use std::collections::BTreeMap;
-use num_bigint_dig::BigInt;
 //use std::io::Write;
 
 pub type FunctionCode = Box<FunctionCodeInfo>;

@@ -966,44 +966,56 @@ fn translate_constant_variable(
     let line = context.files.get_line(meta.start, meta.get_file_id()).unwrap();
     let message_id =  state.message_id;
 
-    let mut access_to_instr = Vec::new();
-    for acc in access {
-        match acc{
-            Access::ArrayAccess(expr) =>{
-                access_to_instr.push(translate_expression(
-                    expr,
-                    state,
-                    context
-                ));
+    let index = if !access.is_empty(){
+        let mut access_to_instr = Vec::new();
+        for acc in access {
+            match acc{
+                Access::ArrayAccess(expr) =>{
+                    access_to_instr.push(translate_expression(
+                        expr,
+                        state,
+                        context
+                    ));
+                }
+                _ => unreachable!()
             }
-            _ => unreachable!()
         }
-    }
 
 
-    let index_stack = indexing_instructions_filter(access_to_instr, state);
-    for instruction in index_stack {
-        let dimension_length = dims.pop().unwrap();
-        linear_length /= dimension_length;
-        let inst = ValueBucket {
+        let index_stack = indexing_instructions_filter(access_to_instr, state);
+        for instruction in index_stack {
+            let dimension_length = dims.pop().unwrap();
+            linear_length /= dimension_length;
+            let inst = ValueBucket {
+                line,
+                message_id,
+                parse_as: ValueType::U32,
+                op_aux_no: 0,
+                value: linear_length,
+            }
+            .allocate();
+            let jump = ComputeBucket {
+                line,
+                message_id,
+                op_aux_no: 0,
+                op: OperatorType::MulAddress,
+                stack: vec![inst, instruction],
+            }
+            .allocate();
+            stack.push(jump);
+        }
+        fold(OperatorType::AddAddress, stack, state)
+    } else{
+        ValueBucket {
             line,
             message_id,
             parse_as: ValueType::U32,
             op_aux_no: 0,
-            value: linear_length,
-        }
-        .allocate();
-        let jump = ComputeBucket {
-            line,
-            message_id,
-            op_aux_no: 0,
-            op: OperatorType::MulAddress,
-            stack: vec![inst, instruction],
-        }
-        .allocate();
-        stack.push(jump);
-    }
-    let index = fold(OperatorType::AddAddress, stack, state);
+            value: 0,
+        }.allocate()
+    };
+
+    
     LoadConstantBucket{
         line,
         message_id,
