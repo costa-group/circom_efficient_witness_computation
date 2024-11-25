@@ -7,7 +7,7 @@
 - Handling equality checks with dynamic size in witness generation code.
 - Improving error messages.
 - Improving error recovery in parser.
-- Adding flag --constraint_assert_dissabled. When this flag is activated the compiler does not add asserts in the generated code (C++, WASM) for === constraint equalities
+- Adding flag --constraint_assert_disabled. When this flag is activated the compiler does not add asserts in the generated code (C++, WASM) for === constraint equalities
 
   
 #### Fixed bugs: 

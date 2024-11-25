@@ -191,7 +191,7 @@ struct Context<'a> {
     _functions: &'a HashMap<String, Vec<Length>>,
     cmp_to_type: HashMap<String, ClusterType>,
     buses: &'a Vec<BusInstance>,
-    constraint_assert_dissabled_flag: bool,
+    constraint_assert_disabled_flag: bool,
     constant_variables: BTreeMap<String, (Vec<usize>, Vec<BigInt>)>
 }
 
@@ -682,8 +682,8 @@ fn translate_constraint_equality(stmt: Statement, state: &mut State, context: &C
     use Statement::ConstraintEquality;
     use Expression::Variable;
     if let ConstraintEquality { meta, lhe, rhe } = stmt {
-        // if constraint_assert_dissabled is active then do not translate
-        if !context.constraint_assert_dissabled_flag{
+        // if constraint_assert_disabled is active then do not translate
+        if !context.constraint_assert_disabled_flag{
             let starts_at = context.files.get_line(meta.start, meta.get_file_id()).unwrap();
 
             let length = if let Variable { meta, name, access} = rhe.clone() {
@@ -1989,7 +1989,7 @@ pub struct CodeInfo<'a> {
     pub string_table: HashMap<String, usize>,
     pub signals_to_tags: HashMap<Vec<String>, BigInt>,
     pub buses: &'a Vec<BusInstance>,
-    pub constraint_assert_dissabled_flag: bool,
+    pub constraint_assert_disabled_flag: bool,
     pub constant_variables: BTreeMap<String, (Vec<usize>, Vec<BigInt>)>
 }
 
@@ -2031,7 +2031,7 @@ pub fn translate_code(body: Statement, code_info: CodeInfo) -> CodeOutput {
         cmp_to_type: code_info.cmp_to_type,
         tmp_database: code_info.template_database,
         buses: code_info.buses,
-        constraint_assert_dissabled_flag: code_info.constraint_assert_dissabled_flag,
+        constraint_assert_disabled_flag: code_info.constraint_assert_disabled_flag,
         constant_variables: code_info.constant_variables
     };
 
