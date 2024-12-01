@@ -99,13 +99,13 @@ impl WriteC for FunctionCodeInfo {
         let header = format!("void {}", self.header);
         let params = vec![
             declare_circom_calc_wit(),
-            if producer.get_size_32_bit() > 2 {
+            if producer.prime_str != "goldilocks" {
                 declare_lvar_pointer()
             } else {
                 declare_64bit_lvar_array()
             },
             declare_component_father(),
-            if producer.get_size_32_bit() > 2 {
+            if producer.prime_str != "goldilocks" {
                 declare_dest_pointer()
             } else {
                 declare_64bit_dest_reference()
@@ -113,7 +113,7 @@ impl WriteC for FunctionCodeInfo {
             declare_dest_size(),
         ];
         let mut body = vec![];
-        if producer.get_size_32_bit() > 2 {
+        if producer.prime_str != "goldilocks" {
             body.push(format!("{};", declare_circuit_constants()));
             body.push(format!("{};", declare_expaux(self.max_number_of_ops_in_expression)));
         } else {
@@ -126,7 +126,7 @@ impl WriteC for FunctionCodeInfo {
         for (var, values) in &self.constant_variables{
             let name_constant = format!("{}_{}", self.header, var);
             let mut pointers_to_values = Vec::new();
-            if producer.get_size_32_bit() > 2 {
+            if producer.prime_str != "goldilocks" {
                 for v in values{
                     pointers_to_values.push(format!("&{}", circuit_constants(v.to_string())));
                 }

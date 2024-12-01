@@ -279,7 +279,7 @@ impl TemplateCodeInfo {
         run_params.push(declare_ctx_index());
         run_params.push(declare_circom_calc_wit());
         let mut run_body = vec![];
-        if producer.get_size_32_bit() > 2 {
+        if producer.prime_str != "goldilocks" {
             run_body.push(format!("{};", declare_circuit_constants()));
         run_body.push(format!("{};", declare_signal_values()));
             run_body.push(format!("{};", declare_expaux(self.expression_stack_depth)));
@@ -304,7 +304,7 @@ impl TemplateCodeInfo {
         for (var, values) in &self.constant_variables{
             let name_constant = format!("{}_{}", self.header, var);
             let mut pointers_to_values = Vec::new();
-            if producer.get_size_32_bit() > 2 {
+            if producer.prime_str != "goldilocks" {
                 for v in values{
                     pointers_to_values.push(format!("&{}", circuit_constants(v.to_string())));
                 }
