@@ -339,9 +339,6 @@ impl WriteC for LoadBucket {
             }
             AddressType::SubcmpSignal { uniform_parallel_value, is_output, .. } => {
 
-            // we store the value of the cmp index
-            prologue.push(format!("cmp_index_ref_load = {};",cmp_index_ref.clone()));
-
 		if *is_output {
             if uniform_parallel_value.is_some(){
                 if uniform_parallel_value.unwrap(){
@@ -368,13 +365,13 @@ impl WriteC for LoadBucket {
                     prologue.push(format!("ctx->numThreadMutex.unlock();"));
                     prologue.push(format!("ctx->ntcvs.notify_one();"));	 
 		            prologue.push(format!(
-                        "std::unique_lock<std::mutex> lk({}->componentMemory[{}[cmp_index_ref_load]].mutexes[aux2 + i]);",
-                        CIRCOM_CALC_WIT, MY_SUBCOMPONENTS)
+                        "std::unique_lock<std::mutex> lk({}->componentMemory[{}[{}]].mutexes[aux2 + i]);",
+                        CIRCOM_CALC_WIT, MY_SUBCOMPONENTS, cmp_index_ref)
                     );
 		            prologue.push(format!(
-                        "{}->componentMemory[{}[cmp_index_ref_load]].cvs[aux2 + i].wait(lk, [{},{},cmp_index_ref_load,aux2, i]() {{return {}->componentMemory[{}[cmp_index_ref_load]].outputIsSet[aux2 + i];}});",
-			            CIRCOM_CALC_WIT, MY_SUBCOMPONENTS, CIRCOM_CALC_WIT,
-			            MY_SUBCOMPONENTS, CIRCOM_CALC_WIT, MY_SUBCOMPONENTS)
+                        "{}->componentMemory[{}[{}]].cvs[aux2 + i].wait(lk, [{},{},{},aux2, i]() {{return {}->componentMemory[{}[{}]].outputIsSet[aux2 + i];}});",
+			            CIRCOM_CALC_WIT, MY_SUBCOMPONENTS, cmp_index_ref,  CIRCOM_CALC_WIT,
+			            MY_SUBCOMPONENTS, cmp_index_ref, CIRCOM_CALC_WIT, MY_SUBCOMPONENTS, cmp_index_ref)
                     );
                     prologue.push(format!("std::unique_lock<std::mutex> lkt({}->numThreadMutex);",CIRCOM_CALC_WIT));
                     prologue.push(format!("{}->ntcvs.wait(lkt, [{}]() {{return {}->numThread <  {}->maxThread; }});",CIRCOM_CALC_WIT,CIRCOM_CALC_WIT,CIRCOM_CALC_WIT,CIRCOM_CALC_WIT));
@@ -415,13 +412,13 @@ impl WriteC for LoadBucket {
                 prologue.push(format!("ctx->numThreadMutex.unlock();"));
                 prologue.push(format!("ctx->ntcvs.notify_one();"));	 
 	            prologue.push(format!(
-                        "std::unique_lock<std::mutex> lk({}->componentMemory[{}[cmp_index_ref_load]].mutexes[aux2 + i]);",
-                        CIRCOM_CALC_WIT, MY_SUBCOMPONENTS)
+                        "std::unique_lock<std::mutex> lk({}->componentMemory[{}[{}]].mutexes[aux2 + i]);",
+                        CIRCOM_CALC_WIT, MY_SUBCOMPONENTS, cmp_index_ref)
                     );
 		        prologue.push(format!(
-                        "{}->componentMemory[{}[cmp_index_ref_load]].cvs[aux2 + i].wait(lk, [{},{},cmp_index_ref_load,aux2, i]() {{return {}->componentMemory[{}[cmp_index_ref_load]].outputIsSet[aux2 + i];}});",
-			            CIRCOM_CALC_WIT, MY_SUBCOMPONENTS, CIRCOM_CALC_WIT,
-			            MY_SUBCOMPONENTS, CIRCOM_CALC_WIT, MY_SUBCOMPONENTS)
+                        "{}->componentMemory[{}[{}]].cvs[aux2 + i].wait(lk, [{},{},{},aux2, i]() {{return {}->componentMemory[{}[{}]].outputIsSet[aux2 + i];}});",
+			            CIRCOM_CALC_WIT, MY_SUBCOMPONENTS, cmp_index_ref, CIRCOM_CALC_WIT,
+			            MY_SUBCOMPONENTS, cmp_index_ref, CIRCOM_CALC_WIT, MY_SUBCOMPONENTS, cmp_index_ref)
                     );
                 prologue.push(format!("std::unique_lock<std::mutex> lkt({}->numThreadMutex);",CIRCOM_CALC_WIT));
                 prologue.push(format!("{}->ntcvs.wait(lkt, [{}]() {{return {}->numThread <  {}->maxThread; }});",CIRCOM_CALC_WIT,CIRCOM_CALC_WIT,CIRCOM_CALC_WIT,CIRCOM_CALC_WIT));
