@@ -45,9 +45,9 @@ impl ToString for LoadConstantBucket {
     }
 }
 impl WriteWasm for LoadConstantBucket {
-    fn produce_wasm(&self, producer: &WASMProducer) -> Vec<String> {
-        
-        vec![]
+    fn produce_wasm(&self, _producer: &WASMProducer) -> Vec<String> {
+        unreachable!();
+        // vec![]
     }
 }
 
