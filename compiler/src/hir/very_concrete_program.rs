@@ -147,6 +147,7 @@ pub struct BusInstance{
 pub struct Component {
     pub name: String,
     pub lengths: Vec<Length>,
+    pub is_anonymous: bool,
 }
 
 impl Component {
@@ -202,7 +203,7 @@ pub struct TemplateInstance {
     pub triggers: Vec<Trigger>,
     pub clusters: Vec<TriggerCluster>,
     pub code: Code,
-    pub constant_variables: BTreeMap<String, (Vec<usize>, Vec<BigInt>)>
+    pub constant_variables: BTreeMap<String, (Vec<usize>, Vec<BigInt>)>,
 }
 
 pub struct TemplateConfig {

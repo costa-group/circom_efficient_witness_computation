@@ -225,7 +225,7 @@ fn execute_statement(
             debug_assert!(possible_fold.is_none());
             possible_fold
         }
-        Declaration { meta, xtype, name, dimensions, .. } => {
+        Declaration { meta, xtype, name, dimensions, is_anonymous, .. } => {
             match xtype {
                 VariableType::AnonymousComponent => {
                     if runtime.block_type == BlockType::Unknown{
@@ -287,6 +287,7 @@ fn execute_statement(
                             execute_component_declaration(
                                 name,
                                 &usable_dimensions,
+                                *is_anonymous,
                                 &mut runtime.environment,
                                 actual_node,
                             )
@@ -1164,11 +1165,12 @@ fn execute_template_call_complete(
 fn execute_component_declaration(
     component_name: &str,
     dimensions: &[SliceCapacity],
+    is_anonymous: bool,
     environment: &mut ExecutionEnvironment,
     actual_node: &mut Option<ExecutedTemplate>,
 ) {
     if let Option::Some(node) = actual_node {
-        node.add_component(component_name, dimensions);
+        node.add_component(component_name, dimensions, is_anonymous);
         environment_shortcut_add_component(environment, component_name, dimensions);
     } else {
         unreachable!()
@@ -2504,7 +2506,8 @@ fn execute_delayed_declarations(
                 )?
             };
         if let Option::Some(node) = actual_node {
-            node.add_component(&component_name, &usable_dimensions);
+            // They are always anonymous components
+            node.add_component(&component_name, &usable_dimensions, true);
         }           
     }
     Result::Ok(())
