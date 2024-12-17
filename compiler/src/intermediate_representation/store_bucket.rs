@@ -712,8 +712,9 @@ impl WriteC for StoreBucket {
                         build_call(sub_cmp_call_name, sub_cmp_call_arguments)
                     )]
                 };
-                if let StatusInput::Unknown = status {
+                if let StatusInput::Unknown = status{
                     assert!(!is_anonymous);
+
                     let sub_cmp_counter_decrease_andcheck = format!("!({})",sub_cmp_counter_decrease);
                     let if_condition = vec![sub_cmp_counter_decrease_andcheck];
                     prologue.push("// run sub component if needed".to_string());

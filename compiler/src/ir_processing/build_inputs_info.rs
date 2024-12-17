@@ -69,7 +69,7 @@ pub fn visit_branch(
         inside_loop
     );
     let found_unknown_else :bool = visit_list(
-        &mut bucket.if_branch, 
+        &mut bucket.else_branch, 
         &mut known_last_component_else, 
         &mut unknown_last_component_else, 
         found_unknown_address,
@@ -232,6 +232,7 @@ pub fn visit_store(
     found_unknown_address: bool,
     inside_loop: bool
 )-> bool{
+    
     let needs_consider = match bucket.context.size{
         SizeOption::Single(value) if value == 0 =>{
             false
@@ -267,9 +268,7 @@ pub fn visit_address_type(
     if let SubcmpSignal { cmp_address, input_information, is_anonymous , cmp_name, ..} = xtype {
         
         if let Input {..} = input_information{
-            
             if *is_anonymous{
-                println!("{}", cmp_name);
                 if known_last_component.contains(&cmp_name.to_string()){
                     *input_information = Input{status: NoLast};
                 } else{
