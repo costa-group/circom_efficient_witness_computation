@@ -3,7 +3,7 @@ use crate::translating_traits::*;
 use code_producers::c_elements::*;
 use code_producers::wasm_elements::*;
 
-#[derive(Clone)]
+#[derive(Clone, Hash)]
 pub struct ValueBucket {
     pub line: usize,
     pub message_id: usize,
