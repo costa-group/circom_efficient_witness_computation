@@ -44,6 +44,8 @@ pub struct TemplateDB {
     pub wire_info: Vec<HashMap<String, WireInfo>>,
     // template_name to usize
     pub indexes: HashMap<String, usize>,
+    // template_names that are anonymous
+    pub anonymous: HashSet<String>,
     // one per generic template, gives its signal to code correspondence
     pub signals_id: Vec<HashMap<String, usize>>,
 }
@@ -54,6 +56,7 @@ impl TemplateDB {
             signal_addresses: Vec::with_capacity(templates.len()),
             wire_info: Vec::with_capacity(templates.len()),
             signals_id: Vec::with_capacity(templates.len()),
+            anonymous: HashSet::new()
         };
         for tmp in templates {
             TemplateDB::add_instance(&mut database, tmp);
@@ -111,6 +114,12 @@ impl TemplateDB {
                 }
             }
         }
+        for component in &instance.components{
+            if component.is_anonymous{
+                db.anonymous.insert(component.name.clone());
+            }
+        }
+
         initialize_signals(&mut state, instance.wires.clone());
         db.signal_addresses.push(state.environment);
         db.wire_info.push(wire_info);
@@ -616,7 +625,7 @@ fn translate_call_case(
     use Expression::Call;
     if let Call { id, args, .. } = info.src {
         let args_instr = translate_call_arguments(args, state, context);
-        info.prc_symbol.into_call_assign(id, args_instr, &state)
+        info.prc_symbol.into_call_assign(id, args_instr, &state, context)
     } else {
         unreachable!()
     }
@@ -629,7 +638,7 @@ fn translate_standard_case(
 ) -> InstructionPointer {
     let (src_size, src_address)= get_expression_size(&info.src, state, context);
     let src = translate_expression(info.src, state, context);
-    info.prc_symbol.into_store(src, state, src_size, src_address)
+    info.prc_symbol.into_store(src, state, src_size, src_address, context)
 }
 
 // End of substitution utils
@@ -943,7 +952,7 @@ fn translate_variable(
             )
         } else {
             let def = SymbolDef { meta, symbol: name, acc: access };
-            ProcessedSymbol::new(def, state, context).into_load(state)
+            ProcessedSymbol::new(def, state, context).into_load(state, context)
         }
     } else {
         unreachable!()
@@ -1443,6 +1452,7 @@ impl ProcessedSymbol {
         id: String,
         args: ArgData,
         state: &State,
+        context: &Context
     ) -> InstructionPointer {
         let data = if let Option::Some(signal) = self.signal {
             let dest_type = AddressType::SubcmpSignal {
@@ -1457,9 +1467,11 @@ impl ProcessedSymbol {
                 is_output: self.signal_type.unwrap() == SignalType::Output,
                 uniform_parallel_value: state.component_to_parallel.get(&self.name).unwrap().uniform_parallel_value,
                 input_information : match self.signal_type.unwrap() {
-                    SignalType::Input => InputInformation::Input { status: StatusInput:: Unknown},
+                    SignalType::Input => InputInformation::Input { status: StatusInput:: Unknown, needs_decrement: true},
                     _ => InputInformation::NoInput,
                 },
+                is_anonymous: context.tmp_database.anonymous.contains(&self.name),
+                cmp_name: self.name.clone()
             };
             FinalData {
                 context: InstrContext { size: self.length },
@@ -1503,7 +1515,8 @@ impl ProcessedSymbol {
         InstructionPointer, 
         state: &State, 
         src_size: SizeOption,
-        src_address: Option<InstructionPointer>
+        src_address: Option<InstructionPointer>,
+        context: &Context
     ) -> InstructionPointer {
         if let Option::Some(signal) = self.signal {
             let dest_type = AddressType::SubcmpSignal {
@@ -1518,9 +1531,11 @@ impl ProcessedSymbol {
                 uniform_parallel_value: state.component_to_parallel.get(&self.name).unwrap().uniform_parallel_value,
                 is_output: self.signal_type.unwrap() == SignalType::Output,
                 input_information : match self.signal_type.unwrap() {
-                    SignalType::Input => InputInformation::Input { status:StatusInput:: Unknown},
+                    SignalType::Input => InputInformation::Input { status:StatusInput:: Unknown, needs_decrement: true},
                     _ => InputInformation::NoInput,
                 },
+                is_anonymous: context.tmp_database.anonymous.contains(&self.name),
+                cmp_name: self.name.clone()
             };
             StoreBucket {
                 src,
@@ -1562,7 +1577,7 @@ impl ProcessedSymbol {
         }
     }
 
-    fn into_load(self, state: &State) -> InstructionPointer {
+    fn into_load(self, state: &State, context: &Context) -> InstructionPointer {
         if let Option::Some(signal) = self.signal {
             let dest_type = AddressType::SubcmpSignal {
                 cmp_address: compute_full_address(
@@ -1576,9 +1591,11 @@ impl ProcessedSymbol {
                 uniform_parallel_value: state.component_to_parallel.get(&self.name).unwrap().uniform_parallel_value,
                 is_output: self.signal_type.unwrap() == SignalType::Output,
                 input_information : match self.signal_type.unwrap() {
-                    SignalType::Input => InputInformation::Input { status: StatusInput:: Unknown},
+                    SignalType::Input => InputInformation::Input { status: StatusInput:: Unknown, needs_decrement: true},
                     _ => InputInformation::NoInput,
                 },
+                is_anonymous: context.tmp_database.anonymous.contains(&self.name),
+                cmp_name: self.name.clone()
             };
             LoadBucket {
                 src: signal,

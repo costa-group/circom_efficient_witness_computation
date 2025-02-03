@@ -223,6 +223,7 @@ pub enum Statement {
         name: String,
         dimensions: Vec<Expression>,
         is_constant: bool,
+        is_anonymous: bool
     },
     Substitution {
         meta: Meta,
