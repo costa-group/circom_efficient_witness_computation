@@ -258,6 +258,12 @@ impl WriteC for CreateCmpBucket {
             }
         }
 
+        let to_add = if complete_array && self.number_of_cmp == 1{
+            ""
+        } else{
+            "+ i"
+        };
+
         let new_comp_name = if self.number_of_cmp > 1{
             format!("\"{}\"+{}",
                 self.name_subcomponent.to_string(),
@@ -277,9 +283,10 @@ impl WriteC for CreateCmpBucket {
 
         // if it is not uniform parallel check the value of status parallel to create the component
         if self.uniform_parallel.is_none(){
-            instructions.push(format!("{}[{}+i] = status_parallel;", 
+            instructions.push(format!("{}[{}{}] = status_parallel;", 
                 MY_SUBCOMPONENTS_PARALLEL,
-                scmp_idx
+                scmp_idx, 
+                to_add
             ));
             instructions.push(format!(
                 "if (status_parallel) {}_create_parallel({});", 
@@ -296,10 +303,11 @@ impl WriteC for CreateCmpBucket {
         else{
             if self.is_part_mixed_array_not_uniform_parallel{
                 instructions.push(format!(
-                    "{}[{}+i] = {};",
+                    "{}[{}{}] = {};",
                     MY_SUBCOMPONENTS_PARALLEL, 
                     scmp_idx,
-                    self.uniform_parallel.unwrap()
+                    to_add,
+                    self.uniform_parallel.unwrap(),
                 ));
             }
 
