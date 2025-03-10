@@ -1,6 +1,4 @@
 # Release notes
-<<<<<<< HEAD
-=======
 ## March 11, 2025 circom 2.2.2
 #### Extensions
 - Adding a new prime number: bls12-377.
