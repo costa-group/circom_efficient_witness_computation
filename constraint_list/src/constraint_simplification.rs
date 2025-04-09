@@ -272,6 +272,143 @@ fn constant_eq_simplification(
     (subs, cons)
 }
 
+
+// TODO: more efficient than calling to gaussian elimination?
+/* 
+fn plonk_cluster_simplification(
+    mut cluster: Cluster,
+    forbidden: &HashSet<usize>,
+    field: &BigInt,
+) -> (LinkedList<S>, LinkedList<C>) {
+    if Cluster::size(&cluster) == 1 {
+        let mut substitutions = LinkedList::new();
+        let mut constraints = LinkedList::new();
+        let constraint = LinkedList::pop_back(&mut cluster.constraints).unwrap();
+        let signals: Vec<_> = C::take_cloned_signals_ordered(&constraint).iter().cloned().collect();
+        let s_0 = signals[0];
+        let s_1 = signals[1];
+        if HashSet::contains(forbidden, &s_0) && HashSet::contains(forbidden, &s_1) {
+            LinkedList::push_back(&mut constraints, constraint);
+        } else if HashSet::contains(forbidden, &s_0) {
+            // In this case we take the signal s_1, build the expression removing it
+            let subs = C::clear_signal_from_linear(constraint, &s_1, field);
+            LinkedList::push_back(
+                &mut substitutions,
+                subs,
+            );
+        } else if HashSet::contains(forbidden, &s_1) {
+            // In this case we take the signal s_0, build the expression removing it
+            let subs = C::clear_signal_from_linear(constraint, &s_0, field);
+            LinkedList::push_back(
+                &mut substitutions,
+                subs,
+            );
+        } else {
+            let (l, r) = if s_0 > s_1 { (s_0, s_1) } else { (s_1, s_0) };
+            // In this case we take the signal l
+            let subs = C::clear_signal_from_linear(constraint, &l, field);
+
+            LinkedList::push_back(&mut substitutions, subs);
+        }
+        (substitutions, constraints)
+    } else {
+        let mut cons = LinkedList::new();
+        let mut subs = LinkedList::new();
+        let (mut remains, mut min_remains) = (BTreeSet::new(), None);
+        let (mut remove, mut min_remove) = (HashSet::new(), None);
+        for c in cluster.constraints {
+            for signal in C::take_cloned_signals_ordered(&c) {
+                if HashSet::contains(&forbidden, &signal) {
+                    BTreeSet::insert(&mut remains, signal);
+                    min_remains = Some(min_remains.map_or(signal, |s| std::cmp::min(s, signal)));
+                } else {
+                    min_remove = Some(min_remove.map_or(signal, |s| std::cmp::min(s, signal)));
+                    HashSet::insert(&mut remove, signal);
+                }
+            }
+        }
+
+        let rh_signal = if let Some(signal) = min_remains {
+            BTreeSet::remove(&mut remains, &signal);
+            signal
+        } else {
+            let signal = min_remove.unwrap();
+            HashSet::remove(&mut remove, &signal);
+            signal
+        };
+
+        for signal in remains {
+            let l = A::Signal { symbol: signal };
+            let r = A::Signal { symbol: rh_signal };
+            let expr = A::sub(&l, &r, field);
+            let c = A::transform_expression_to_constraint_form(expr, field).unwrap();
+            LinkedList::push_back(&mut cons, c);
+        }
+
+        for signal in remove {
+            let sub = S::new(signal, A::Signal { symbol: rh_signal }).unwrap();
+            LinkedList::push_back(&mut subs, sub);
+        }
+
+        (subs, cons)
+    }
+}
+*/
+
+// TODO: more efficient, method for plonk clusters
+fn plonk_simplification(
+    plonk_equalities: LinkedList<C>,
+    forbidden: Arc<HashSet<usize>>,
+    no_vars: usize,
+    field: &BigInt,
+    substitution_log: &mut Option<SubstitutionJSON>,
+) -> (LinkedList<S>, LinkedList<C>) {
+    use circom_algebra::simplification_utils::full_simplification;
+    use circom_algebra::simplification_utils::Config;
+    use std::sync::mpsc;
+    use threadpool::ThreadPool;
+
+    // println!("Cluster simplification");
+    let mut cons = LinkedList::new();
+    let mut substitutions = LinkedList::new();
+    let clusters = build_clusters(plonk_equalities, no_vars);
+    let (cluster_tx, simplified_rx) = mpsc::channel();
+    let pool = ThreadPool::new(num_cpus::get());
+    let no_clusters = Vec::len(&clusters);
+    // println!("Clusters: {}", no_clusters);
+    let mut id = 0;
+    for cluster in clusters {
+        let cluster_tx = cluster_tx.clone();
+        let config = Config {
+            field: field.clone(),
+            constraints: cluster.constraints,
+            forbidden: Arc::clone(&forbidden),
+            num_signals: cluster.num_signals,
+            use_old_heuristics: false,
+        };
+        let job = move || {
+            // println!("cluster: {}", id);
+            let result = full_simplification(config);
+            // println!("End of cluster: {}", id);
+            cluster_tx.send(result).unwrap();
+        };
+        ThreadPool::execute(&pool, job);
+        let _ = id;
+        id += 1;
+    }
+    ThreadPool::join(&pool);
+
+    for _ in 0..no_clusters {
+        let mut result = simplified_rx.recv().unwrap();
+        log_substitutions(&result.substitutions, substitution_log);
+        LinkedList::append(&mut cons, &mut result.constraints);
+        LinkedList::append(&mut substitutions, &mut result.substitutions);
+    }
+    (substitutions, cons)
+}
+
+
+
 fn linear_simplification(
     log: &mut Option<SubstitutionJSON>,
     linear: LinkedList<C>,
@@ -400,6 +537,7 @@ fn build_relevant_set(
     relevant: &mut HashSet<usize>,
     renames: &SEncoded,
     deletes: &SEncoded,
+    plonk_subs: &SEncoded,
 ) {
     fn unwrapped_signal(map: &SEncoded, signal: usize) -> Option<usize> {
         let f = |e: &A| {
@@ -412,11 +550,36 @@ fn build_relevant_set(
         SEncoded::get(map, &signal).map_or(None, f)
     }
 
+    fn unwrapped_plonk_subs(map: &SEncoded, signal: usize) ->Option<usize> {
+        let f = |e: &A| {
+            if let A::Linear { coefficients } = e {
+                let aux = coefficients.keys();
+                assert!(aux.len() <= 2);
+                let mut result = None;
+                for aux in coefficients.keys(){
+                    if *aux != C::constant_coefficient(){
+                        result = Some(*aux)
+                    }
+                }
+                result
+            } else if let A::Signal{ symbol } = e {
+                Some(*symbol)
+            } else if let A::Number{ .. } = e {
+                Some(0) 
+            } else{
+                None
+            }
+        };
+        SEncoded::get(map, &signal).map_or(None, f)
+    }
+
     let (_, non_linear) = EncodingIterator::take(&mut iter);
     for c in non_linear {
         for signal in C::take_cloned_signals(&c) {
+            // First we study if the subs transform the signal, then the plonk subs
             let signal = unwrapped_signal(renames, signal).unwrap_or(signal);
-            if !SEncoded::contains_key(deletes, &signal) {
+            let signal = unwrapped_plonk_subs(plonk_subs, signal).unwrap_or(signal);
+            if signal != 0 && !SEncoded::contains_key(deletes, &signal) {
                 HashSet::insert(relevant, signal);
             }
         }
@@ -424,7 +587,7 @@ fn build_relevant_set(
 
     for edge in EncodingIterator::edges(&iter) {
         let next = EncodingIterator::next(&iter, edge);
-        build_relevant_set(next, relevant, renames, deletes)
+        build_relevant_set(next, relevant, renames, deletes, plonk_subs)
     }
 }
 
@@ -451,6 +614,8 @@ pub fn simplification(smp: &mut Simplifier) -> (ConstraintStorage, SignalMap, us
         } else {
              None 
         };
+
+    let apply_plonk = true;
     let apply_linear = !smp.flag_s;
     let use_old_heuristics = smp.flag_old_heuristics;
     let field = smp.field.clone();
@@ -459,11 +624,13 @@ pub fn simplification(smp: &mut Simplifier) -> (ConstraintStorage, SignalMap, us
     let equalities = std::mem::replace(&mut smp.equalities, LinkedList::new());
     let max_signal = smp.max_signal;
     let mut cons_equalities = std::mem::replace(&mut smp.cons_equalities, LinkedList::new());
+    let mut plonk_equalities = std::mem::replace(&mut smp.plonk_equalities, LinkedList::new());
     let mut linear = std::mem::replace(&mut smp.linear, LinkedList::new());
     let mut deleted = HashSet::new();
     let mut lconst = LinkedList::new();
     let mut no_rounds = smp.no_rounds;
     let remove_unused = true;
+    let mut no_plonk_simp = 0;
 
     let relevant_signals = {
         // println!("Creating first relevant set");
@@ -472,7 +639,8 @@ pub fn simplification(smp: &mut Simplifier) -> (ConstraintStorage, SignalMap, us
         let iter = EncodingIterator::new(&smp.dag_encoding);
         let s_sub = HashMap::with_capacity(0);
         let c_sub = HashMap::with_capacity(0);
-        build_relevant_set(iter, &mut relevant, &s_sub, &c_sub);
+        let p_sub = HashMap::with_capacity(0);
+        build_relevant_set(iter, &mut relevant, &s_sub, &c_sub, &p_sub);
         let _dur = now.elapsed().unwrap().as_millis();
         // println!("First relevant set created: {} ms", dur);
         relevant
@@ -501,6 +669,11 @@ pub fn simplification(smp: &mut Simplifier) -> (ConstraintStorage, SignalMap, us
                 C::fix_constraint(constraint, &field);
             }
         }
+        for constraint in &mut plonk_equalities {
+            if fast_encoded_constraint_substitution(constraint, &substitutions, &field){
+                C::fix_constraint(constraint, &field);
+            }
+        }
         for signal in substitutions.keys().cloned() {
             deleted.insert(signal);
         }
@@ -522,6 +695,11 @@ pub fn simplification(smp: &mut Simplifier) -> (ConstraintStorage, SignalMap, us
                 C::fix_constraint(constraint, &field);
             }
         }
+        for constraint in &mut plonk_equalities {
+            if fast_encoded_constraint_substitution(constraint, &substitutions, &field){
+                C::fix_constraint(constraint, &field);
+            }
+        }
         for signal in substitutions.keys().cloned() {
             deleted.insert(signal);
         }
@@ -530,12 +708,53 @@ pub fn simplification(smp: &mut Simplifier) -> (ConstraintStorage, SignalMap, us
         substitutions
     };
 
+    let plonk_substitutions = {
+        // println!("Start of plonk assignment simplification");
+        if apply_plonk{
+            let now = SystemTime::now();
+            let (subs, mut cons) = plonk_simplification(
+                plonk_equalities,
+                Arc::clone(&forbidden),
+                no_labels,
+                &field,
+                &mut substitution_log,
+            );
+            LinkedList::append(&mut lconst, &mut cons);
+
+            for s in &subs{
+                assert!(s.is_valid_plonk_substitution());
+            }
+
+            let substitutions = build_encoded_fast_substitutions(subs);
+            for constraint in &mut linear {
+                if fast_encoded_constraint_substitution(constraint, &substitutions, &field){
+                    C::fix_constraint(constraint, &field);
+                }
+            }
+            for signal in substitutions.keys().cloned() {
+                deleted.insert(signal);
+            }
+            
+            //remove_not_relevant(&mut substitutions, &relevant_signals);
+
+            let _dur = now.elapsed().unwrap().as_millis();
+            // println!("End of constant assignment simplification: {} ms", dur);
+            
+            println!("Number of constraints eliminated using the PLONK simplification: {}", substitutions.len());
+            no_plonk_simp = substitutions.len();
+            substitutions
+        } else{
+            HashMap::new()
+        }
+        
+    };
+
     let relevant_signals = {
         // println!("Start building relevant");
         let now = SystemTime::now();
         let mut relevant = HashSet::new();
         let iter = EncodingIterator::new(&smp.dag_encoding);
-        build_relevant_set(iter, &mut relevant, &single_substitutions, &cons_substitutions);
+        build_relevant_set(iter, &mut relevant, &single_substitutions, &cons_substitutions, &plonk_substitutions);
         let _dur = now.elapsed().unwrap().as_millis();
         // println!("Relevant built: {} ms", dur);
         relevant
@@ -583,6 +802,7 @@ pub fn simplification(smp: &mut Simplifier) -> (ConstraintStorage, SignalMap, us
         let mut frames = LinkedList::new();
         LinkedList::push_back(&mut frames, single_substitutions);
         LinkedList::push_back(&mut frames, cons_substitutions);
+        LinkedList::push_back(&mut frames, plonk_substitutions);
         LinkedList::push_back(&mut frames, linear_substitutions);
         let iter = EncodingIterator::new(&smp.dag_encoding);
         let mut storage = ConstraintStorage::new();
@@ -590,7 +810,10 @@ pub fn simplification(smp: &mut Simplifier) -> (ConstraintStorage, SignalMap, us
         crate::state_utils::empty_encoding_constraints(&mut smp.dag_encoding);
         let _dur = now.elapsed().unwrap().as_millis();
         // println!("Storages built in {} ms", dur);
-        no_rounds -= 1;
+        if no_rounds > 0{
+            no_rounds -= 1;
+
+        }
         (with_linear, storage)
     };
 
@@ -723,7 +946,12 @@ pub fn simplification(smp: &mut Simplifier) -> (ConstraintStorage, SignalMap, us
     if let Some(w) = substitution_log {
         w.end().unwrap();
     }
-    // println!("NO CONSTANTS: {}", constraint_storage.no_constants());
+
+    println!("Number of constraints before plonk simplification: {}", constraint_storage.no_constraints() + no_plonk_simp);
+    println!("Final number of constraints: {}", constraint_storage.no_constraints());
+    let red = no_plonk_simp as f64 / (constraint_storage.no_constraints() + no_plonk_simp) as f64;
+    println!("Reduction: {}%", red * 100.0);
+
     (constraint_storage, signal_map, smp.no_private_inputs - deleted_inputs)
 }
 

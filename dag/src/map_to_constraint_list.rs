@@ -7,6 +7,7 @@ struct CHolder {
     linear: LinkedList<Constraint>,
     equalities: LinkedList<Constraint>,
     constant_equalities: LinkedList<Constraint>,
+    plonk_equalities: LinkedList<Constraint>
 }
 
 fn map_tree(
@@ -29,6 +30,8 @@ fn map_tree(
             LinkedList::push_back(&mut c_holder.constant_equalities, constraint.clone());
         } else if Constraint::is_equality(constraint, &tree.field) {
             LinkedList::push_back(&mut c_holder.equalities, constraint.clone());
+        } else if Constraint::is_plonk_equality(constraint, &tree.field){
+            LinkedList::push_back(&mut c_holder.plonk_equalities, constraint.clone());
         } else if Constraint::is_linear(constraint) {
             LinkedList::push_back(&mut c_holder.linear, constraint.clone());
         } else {
@@ -136,6 +139,7 @@ pub fn map(dag: DAG, flags: SimplificationFlags) -> ConstraintList {
         linear: c_holder.linear,
         equalities: c_holder.equalities,
         cons_equalities: c_holder.constant_equalities,
+        plonk_equalities: c_holder.plonk_equalities,
         no_rounds: flags.no_rounds,
         flag_s: flags.flag_s,
         parallel_flag: flags.parallel_flag,

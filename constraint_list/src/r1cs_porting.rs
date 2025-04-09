@@ -20,6 +20,7 @@ pub fn port_r1cs(list: &ConstraintList, output: &str, custom_gates: bool) -> Res
     let mut constraint_section = R1CSWriter::start_constraints_section(r1cs)?;
     let mut written = 0;
 
+
     for c_id in list.constraints.get_ids() {
         let c = list.constraints.read_constraint(c_id).unwrap();
         let c = C::apply_correspondence(&c, &list.signal_map);

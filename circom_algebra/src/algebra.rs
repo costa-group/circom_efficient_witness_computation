@@ -944,6 +944,11 @@ impl<C: Default + Clone + Display + Hash + Eq> Substitution<C> {
         &self.to
     }
 
+    pub fn is_valid_plonk_substitution(&self) -> bool{
+        let cq: C = ArithmeticExpression::constant_coefficient();
+        self.to.keys().len() < 2 || (self.to.keys().len() == 2 && self.to.contains_key(&cq))
+    }
+
     pub fn take_cloned_signals(&self) -> HashSet<C> {
         let cq: C = ArithmeticExpression::constant_coefficient();
         let mut signals = HashSet::new();
@@ -1181,6 +1186,10 @@ impl<C: Default + Clone + Display + Hash + Eq> Constraint<C> {
         signal_equals_signal(&self.a, &self.b, &self.c, field)
     }
 
+    pub fn is_plonk_equality(&self, _field: &BigInt) -> bool {
+        signal_equals_coef_signal_plus_coef(&self.a, &self.b, &self.c)
+    }
+
     pub fn is_constant_equality(&self) -> bool {
         signal_equals_constant(&self.a, &self.b, &self.c)
     }
@@ -1358,6 +1367,27 @@ where
         false
     }
 }
+
+fn signal_equals_coef_signal_plus_coef<C>(a: &RawExpr<C>, b: &RawExpr<C>, c: &RawExpr<C>) -> bool
+where
+    C: Default + Clone + Display + Hash + Eq,
+{
+    let cq: C = ArithmeticExpression::constant_coefficient();
+    if a.is_empty() && b.is_empty() {
+        
+        if c.keys().len() == 2{
+            !c.contains_key(&cq) // it contains two keys, with none of them being a coef
+        } else if c.keys().len() == 3{ 
+            c.contains_key(&cq) // three keys, one of them a coef
+        } else{
+            false
+        }
+        
+    } else {
+        false
+    }
+}
+
 
 fn signal_equals_constant<C>(a: &RawExpr<C>, b: &RawExpr<C>, c: &RawExpr<C>) -> bool
 where

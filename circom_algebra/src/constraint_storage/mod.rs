@@ -66,4 +66,7 @@ impl ConstraintStorage {
     pub fn no_constants(&self) -> CID {
         self.field_tracker.next_id()
     }
+    pub fn no_constraints(&self) -> CID {
+        self.constraints.len()
+    }
 }

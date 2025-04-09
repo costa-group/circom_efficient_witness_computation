@@ -116,6 +116,7 @@ pub struct Simplifier {
     pub forbidden: HashSet<usize>,
     pub cons_equalities: LinkedList<C>,
     pub equalities: LinkedList<C>,
+    pub plonk_equalities: LinkedList<C>,
     pub linear: LinkedList<C>,
     //  Signals in [witness_len, Vec::len(&signal_map)) are the ones deleted
     pub max_signal: usize,
