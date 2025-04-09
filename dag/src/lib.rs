@@ -546,6 +546,7 @@ impl DAG {
 pub struct SimplificationFlags {
     pub no_rounds: usize,
     pub flag_s: bool,
+    pub flag_plonk: bool,
     pub parallel_flag: bool,
     pub port_substitution: bool,
     pub json_substitutions: String,

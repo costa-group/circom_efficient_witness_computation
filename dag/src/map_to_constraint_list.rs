@@ -142,6 +142,7 @@ pub fn map(dag: DAG, flags: SimplificationFlags) -> ConstraintList {
         plonk_equalities: c_holder.plonk_equalities,
         no_rounds: flags.no_rounds,
         flag_s: flags.flag_s,
+        flag_plonk: flags.flag_plonk,
         parallel_flag: flags.parallel_flag,
         flag_old_heuristics: flags.flag_old_heuristics,
         port_substitution: flags.port_substitution,

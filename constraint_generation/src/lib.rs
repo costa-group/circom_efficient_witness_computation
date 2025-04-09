@@ -27,6 +27,7 @@ pub struct BuildConfig {
     pub flag_json_sub: bool,
     pub json_substitutions: String,
     pub flag_s: bool,
+    pub flag_plonk: bool,
     pub flag_f: bool,
     pub flag_p: bool,
     pub flag_verbose: bool,
@@ -107,6 +108,7 @@ fn simplification_process(vcp: &mut VCP, dag: DAG, config: &BuildConfig) -> Cons
     use dag::SimplificationFlags;
     let flags = SimplificationFlags {
         flag_s: config.flag_s,
+        flag_plonk: config.flag_plonk,
         parallel_flag: config.flag_p,
         port_substitution: config.flag_json_sub,
         json_substitutions: config.json_substitutions.clone(),

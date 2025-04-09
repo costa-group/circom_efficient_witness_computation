@@ -615,7 +615,7 @@ pub fn simplification(smp: &mut Simplifier) -> (ConstraintStorage, SignalMap, us
              None 
         };
 
-    let apply_plonk = true;
+    let apply_plonk = smp.flag_plonk;
     let apply_linear = !smp.flag_s;
     let use_old_heuristics = smp.flag_old_heuristics;
     let field = smp.field.clone();

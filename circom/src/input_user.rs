@@ -28,6 +28,7 @@ pub struct Input {
     pub fast_flag: bool,
     pub reduced_simplification_flag: bool,
     pub parallel_simplification_flag: bool,
+    pub plonk_simplification_flag: bool,
     pub constraint_assert_disabled_flag: bool,
     pub flag_old_heuristics: bool,
     pub inspect_constraints_flag: bool,
@@ -104,6 +105,7 @@ impl Input {
             no_rounds: if let SimplificationStyle::O2(r) = o_style { r } else { 0 },
             fast_flag: o_style == SimplificationStyle::O0,
             reduced_simplification_flag: o_style == SimplificationStyle::O1,
+            plonk_simplification_flag: o_style == SimplificationStyle::O1PLONK,
             parallel_simplification_flag: input_processing::get_parallel_simplification(&matches),
             constraint_assert_disabled_flag: input_processing::get_constraint_assert_disabled(&matches),
             inspect_constraints_flag: input_processing::get_inspect_constraints(&matches),
@@ -218,6 +220,9 @@ impl Input {
     pub fn reduced_simplification_flag(&self) -> bool {
         self.reduced_simplification_flag
     }
+    pub fn plonk_simplification_flag(&self) -> bool {
+        self.plonk_simplification_flag
+    }
     pub fn parallel_simplification_flag(&self) -> bool {
         self.parallel_simplification_flag
     }
@@ -260,17 +265,20 @@ mod input_processing {
     }
 
     #[derive(Copy, Clone, Eq, PartialEq)]
-    pub enum SimplificationStyle { O0, O1, O2(usize) }
+    pub enum SimplificationStyle { O0, O1, O1PLONK, O2(usize)  }
     pub fn get_simplification_style(matches: &ArgMatches) -> Result<SimplificationStyle, ()> {
 
         let o_0 = matches.is_present("no_simplification");
         let o_1 = matches.is_present("reduced_simplification");
+        let o_1_plonk = matches.is_present("plonk_simplification");
         let o_2 = matches.is_present("full_simplification");
         let o_2round = matches.is_present("simplification_rounds");
-        match (o_0, o_1, o_2round, o_2) {
-            (true, _, _, _) => Ok(SimplificationStyle::O0),
-            (_, true, _, _) => Ok(SimplificationStyle::O1),
-            (_, _, true,  _) => {
+        match (o_0, o_1, o_1_plonk, o_2round, o_2) {
+            (true, _, _, _,_) => Ok(SimplificationStyle::O0),
+            (_, true, _, _,_) => Ok(SimplificationStyle::O1),
+            (_, _, true, _,_) => Ok(SimplificationStyle::O1PLONK),
+
+            (_, _, _, true,  _) => {
                 let o_2_argument = matches.value_of("simplification_rounds").unwrap();
                 let rounds_r = usize::from_str_radix(o_2_argument, 10);
                 if let Result::Ok(no_rounds) = rounds_r { 
@@ -278,8 +286,8 @@ mod input_processing {
                     else {Ok(SimplificationStyle::O2(no_rounds))}} 
                 else { Result::Err(eprintln!("{}", Colour::Red.paint("invalid number of rounds"))) }
             },
-            (false, false, false, true) => Ok(SimplificationStyle::O2(usize::MAX)),
-            (false, false, false, false) => Ok(SimplificationStyle::O1),
+            (false, false, false, false, true) => Ok(SimplificationStyle::O2(usize::MAX)),
+            (false, false, false, false, false) => Ok(SimplificationStyle::O1),
         }
     }
 
@@ -397,6 +405,14 @@ mod input_processing {
                     .takes_value(false)
                     .help("Only applies signal to signal and signal to constant simplification. This is the default option")
                     .display_order(460)
+            )
+            .arg(
+                Arg::with_name("plonk_simplification")
+                .long("O1_plonk")
+                .hidden(false)
+                .takes_value(false)
+                .help("Applies simplifications that preserve the Plonk format: signal x to Coef * signal + Coef")
+                .display_order(465)
             )
             .arg(
                 Arg::with_name("full_simplification")
